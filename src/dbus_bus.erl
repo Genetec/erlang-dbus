@@ -46,9 +46,9 @@
 	 }).
 
 -define(DEFAULT_DBUS_SERVICE, 'org.freedesktop.DBus').
--define(DEFAULT_DBUS_NODE, 
-	#dbus_node{elements=[], 
-		   interfaces=gb_trees:from_orddict([{'org.freedesktop.DBus', ?DBUS_DBUS}, 
+-define(DEFAULT_DBUS_NODE,
+	#dbus_node{elements=[],
+		   interfaces=gb_trees:from_orddict([{'org.freedesktop.DBus', ?DBUS_DBUS},
 						     {'org.freedesktop.DBus.Introspectable', ?DBUS_INTROSPECTABLE}])}).
 
 connect(BusId) when is_record(BusId, bus_id) ->
@@ -76,15 +76,15 @@ cast(Bus, #dbus_message{}=Msg) ->
 %% gen_server callbacks
 %%
 init([BusId, Owner]) ->
-    case dbus_connection:start_link(BusId, [list, {packet, 0}]) of
+    case dbus_bus_connection:connect(BusId) of
 	{ok, Conn} ->
-	    dbus_connection:auth(Conn),
+	    %% dbus_connection:auth(Conn),
 	    Reg = ets:new(services, [set, private]),
 	    SigH = ets:new(signal_handlers, [set, private]),
 	    {ok, #state{owner=Owner, conn=Conn, services=Reg, signal_handlers=SigH}};
 	ignore ->
 	    ignore;
-	{error, Err} -> 
+	{error, Err} ->
 	    {stop, Err}
     end.
 
