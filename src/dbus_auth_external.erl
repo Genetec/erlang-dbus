@@ -14,12 +14,12 @@
 
 %% dbus_auth callbacks
 -export([init/0,
-	 challenge/2]).
+         challenge/2]).
 
 -define(cookie, <<"31303030">>).
 
 %% @doc Initialize EXTERNAL mechanism.
-%% 
+%%
 %% @end
 -spec init() -> {ok, binary()}.
 init() ->
