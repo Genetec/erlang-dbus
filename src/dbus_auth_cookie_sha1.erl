@@ -20,9 +20,10 @@
 
 %% @doc Initialize DBUS_AUTH_COOKIE_SHA1 authentication
 %% @end
+-spec init() -> {continue, binary(), waiting_challenge} | {error, invalid_user}.
 init() ->
     ?debug("Init DBUS_AUTH_COOKIE_SHA1 authentication~n", []),
-    case os:getenv("USER") of
+    case dbus_os_wrapper:getenv("USER") of
         false ->
             ?error("DBUS_AUTH_COOKIE_SHA1 can not be used without USER env", []),
             {error, invalid_user};
@@ -40,7 +41,7 @@ challenge(HexChall, waiting_challenge) ->
     case binary:split(Chall, [<< $\s >>], [global]) of
         [Context, CookieId, ServerChallenge] ->
             case read_cookie(Context, CookieId) of
-                error ->
+                {error, _} ->
                     {error, no_cookie};
                 {ok, Cookie} ->
                     Challenge = calc_challenge(),
@@ -56,6 +57,7 @@ challenge(_, _) ->
 %%% Priv
 %%%
 calc_challenge() ->
+  %% TODO this challenge looks weak, why not just sending a random int ?
     {MegaSecs, Secs, _MicroSecs} = erlang:timestamp(),
     UnixTime = MegaSecs * 1000000 + Secs,
     BinTime = integer_to_binary(UnixTime),
@@ -70,7 +72,7 @@ calc_response(ServerChallenge, Challenge, Cookie) ->
 
 read_cookie(Context, CookieId) ->
     ?debug("Reading DBUS cookie: context=~s, cookie_id=~s~n", [Context, CookieId]),
-    Name = filename:join([os:getenv("HOME"), ".dbus-keyrings", Context]),
+    Name = filename:join([dbus_os_wrapper:getenv("HOME"), ".dbus-keyrings", Context]),
     case file:open(Name, [read, binary]) of
         {ok, File} ->
             Result = read_cookie2(File, CookieId),
@@ -82,17 +84,17 @@ read_cookie(Context, CookieId) ->
 
 read_cookie2(Device, CookieId) ->
     case file:read_line(Device) of
-        eof ->
-            {error, no_cookie};
-        {ok, Line} ->
-            case binary:split(Line, [<< $\s >>], [global]) of
-                [CookieId, _Time, Cookie] ->
-		    {ok, strip(Cookie)};
-		[_Id, _Time, _] ->
-		    read_cookie2(Device, CookieId);
-                Else ->
-                    {error, {malformed_cookie, Else}}
-            end
+      eof ->
+        {error, no_cookie};
+      {ok, Line} ->
+        case binary:split(Line, [<< $\s >>], [global]) of
+          [CookieId, _Time, Cookie] ->
+            {ok, strip(Cookie)};
+          [_Id, _Time, _] ->
+            read_cookie2(Device, CookieId);
+          Else ->
+            {error, {malformed_cookie, Else}}
+        end
     end.
 
 
