@@ -8,7 +8,7 @@ all() ->
   [
    sha1_init,
    sha1_no_user,
-   sha1_challange,
+   sha1_challenge,
    sha1_no_cookie_file,
    sha1_empty_cookie_file,
    sha1_malforme_cookie,
@@ -58,9 +58,9 @@ sha1_no_user(_Config) ->
 
   ?assertEqual({error, invalid_user}, Error).
 
-sha1_challange() ->
+sha1_challenge() ->
   [{doc, "Given the cookie file read, when send the response, then send the response as hex endoced."}].
-sha1_challange(_Config) ->
+sha1_challenge(_Config) ->
   Challenge = dbus_hex:encode(<<"org_freedesktop_general 0 1">>),
 
   {ok, Response} = dbus_auth_cookie_sha1:challenge(Challenge, waiting_challenge),
@@ -69,7 +69,7 @@ sha1_challange(_Config) ->
   ?assertMatch([_, _], binary:split(Decoded, [<<$\s>>])).
 
 sha1_no_cookie_file() ->
-  [{doc, "Given no cookie file, when try the challange, then return an error."}].
+  [{doc, "Given no cookie file, when try the challenge, then return an error."}].
 sha1_no_cookie_file(_Config) ->
   Challenge = dbus_hex:encode(<<"org_freedesktop_general 0 1">>),
   meck:expect(file, open, [{[<<"/a/path/.dbus-keyrings/org_freedesktop_general">>, '_'], {error, enoent}},
@@ -80,7 +80,7 @@ sha1_no_cookie_file(_Config) ->
   ?assertEqual({error, no_cookie}, Error).
 
 sha1_empty_cookie_file() ->
-  [{doc, "Given an empty cookie file, when try the challange, then return an error."}].
+  [{doc, "Given an empty cookie file, when try the challenge, then return an error."}].
 sha1_empty_cookie_file(_Config) ->
   Challenge = dbus_hex:encode(<<"org_freedesktop_general 0 1">>),
   meck:expect(file, read_line, [{[fd], eof},
@@ -111,3 +111,8 @@ sha1_unmatch_cookie(_Config) ->
   Error = dbus_auth_cookie_sha1:challenge(Challenge, waiting_challenge),
 
   ?assertEqual({error, no_cookie}, Error).
+
+sha1_bad_state() ->
+  [{doc, "Given any other state then waiting_challenge, when do challenge, then return an error."}].
+sha1_bad_state(_Config) ->
+  ct:fail("Not implemented").
