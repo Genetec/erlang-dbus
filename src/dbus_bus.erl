@@ -94,10 +94,12 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 handle_call({export_service, ServiceName}, _From, #state{dbus_object=BusObj}=State) ->
+  %% TODO: JBouchard 2020-01-18 this might not never works since dbus_object is never set
     {ok, _Msg} = dbus_proxy:call(BusObj, 'org.freedesktop.DBus', 'RequestName', [ServiceName, 0]),
     {reply, ok, State};
 
 handle_call({unexport_service, ServiceName}, _From, #state{dbus_object=BusObj}=State) ->
+  %% TODO: JBouchard 2020-01-18 this might not never works since dbus_object is never set
     {ok, _Msg} = dbus_proxy:call(BusObj, 'org.freedesktop.DBus', 'ReleaseName', [ServiceName]),
     {reply, ok, State};
 
