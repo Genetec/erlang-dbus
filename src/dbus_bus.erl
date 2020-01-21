@@ -137,6 +137,7 @@ handle_cast(Request, State) ->
 
 
 handle_info({setup, BusId}, State) ->
+  %% TODO: JBouchard 2020-01-20 If this is called, this will crash, the method is not exported
     case dbus_connection:start_link(BusId, [list, {packet, 0}]) of
 	{ok, Conn} -> {noreply, State#state{conn=Conn}};
 	ignore -> {noreply, State};
@@ -150,6 +151,7 @@ handle_info({dbus_signal, Msg, Conn}, #state{conn=Conn, signal_handlers=_Handler
     ?debug("Ignore signal ~p~n", [Msg]),
     {noreply, State};
 
+%% This will never get call since the process does not trap_exit
 handle_info({'EXIT', Pid, Reason}, State) ->
     ?error("~p: EXIT ~p ~p~n", [?MODULE, Pid, Reason]),
     case handle_release_all_services(Pid, State) of
@@ -189,6 +191,7 @@ handle_release_service(Service, Pid, #state{services=Reg}=State) ->
 		    Pids2 = sets:del_element(Pid, Pids),
 		    case sets:size(Pids2) of
 			0 ->
+            %% TODO: JBouchard 2020-01-20 Should we update the table with an empty set ?
 						% No more pids
 			    {reply, ok, State};
 			_ ->

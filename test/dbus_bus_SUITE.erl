@@ -5,6 +5,8 @@
 -compile(nowarn_export_all).
 -compile(export_all).
 
+-define(TIMEOUT, 1000).
+
 all() ->
   [
    dbus_connect,
@@ -14,10 +16,16 @@ all() ->
    unexport_service,
    remote_service,
    remote_service_cached,
-   link_to_remote_service
+   link_to_remote_service,
+   release_service,
+   release_twice,
+   release_not_registred_service,
+   release_not_own_service,
+   cast_message
   ].
 
 init_per_suite(Config) ->
+  meck:new(dbus_connection, [no_link]),
   meck:new(dbus_bus_connection, [no_link]),
   meck:new(dbus_proxy, [no_link]),
   meck:new(dbus_remote_service, [no_link]),
@@ -33,6 +41,7 @@ init_per_testcase(_, Config) ->
   meck:expect(dbus_bus_connection, connect, fun(_) -> {ok, {dbus_bus_connection, pid}} end),
   meck:expect(dbus_proxy, call, fun(_, _, _, _) -> {ok, msg} end),
   meck:expect(dbus_remote_service, start_link, fun(_, _, _) -> {ok, pid} end),
+  meck:expect(dbus_connection, cast, fun(_, _) -> ok end),
   Config.
 
 end_per_testcase(_, Config) ->
@@ -132,8 +141,70 @@ link_to_remote_service(_Config) ->
 
   {Pid2, Ref} = spawn_monitor(Worker),
 
+  wait_for_down(Pid2, Ref).
+
+release_service() ->
+  [{doc, "Given a acquired service, when release it, then return ok."}].
+release_service(_Config) ->
+  Id = #bus_id{},
+  {ok, Pid} = dbus_bus:connect(Id),
+
+  {ok, ServicePid} = dbus_bus:get_service(Pid, 'my_service'),
+
+  ok = dbus_bus:release_service(Pid, ServicePid).
+
+release_twice() ->
+  [{doc, "Given a acquired service, when release it twice, then return ok."}].
+release_twice(_Config) ->
+  Id = #bus_id{},
+  {ok, Pid} = dbus_bus:connect(Id),
+
+  {ok, ServicePid} = dbus_bus:get_service(Pid, 'my_service'),
+
+  ok = dbus_bus:release_service(Pid, ServicePid),
+  ok = dbus_bus:release_service(Pid, ServicePid).
+
+release_not_registred_service() ->
+  [{doc, "Given a service not acquired, when release it, then return an error."}].
+release_not_registred_service(_Config) ->
+  Id = #bus_id{},
+  {ok, Pid} = dbus_bus:connect(Id),
+
+  Error = dbus_bus:release_service(Pid, make_ref()),
+
+  ?assertEqual({error, not_registered}, Error).
+
+release_not_own_service() ->
+  [{doc, "Given a service acquired, when release it from an other process, then return an error."}].
+release_not_own_service(_Config) ->
+  Id = #bus_id{},
+  {ok, Pid} = dbus_bus:connect(Id),
+
+  {ok, ServicePid} = dbus_bus:get_service(Pid, 'my_service'),
+
+  Worker = fun() -> {error, not_registered} = dbus_bus:release_service(Pid, ServicePid) end,
+  {Pid2, Ref} = spawn_monitor(Worker),
+
+  wait_for_down(Pid2, Ref).
+
+cast_message() ->
+  [{doc, "Given a connected bus, when cast a message, then cast the message to the connection."}].
+cast_message(_Config) ->
+  Id = #bus_id{},
+  {ok, Pid} = dbus_bus:connect(Id),
+
+  ok = dbus_bus:cast(Pid, #dbus_message{}),
+
+  meck:wait(dbus_connection, cast, [{'_', '_'}, #dbus_message{}], ?TIMEOUT).
+
+
+%%====================================================================
+%% Internal functions
+%%====================================================================
+
+wait_for_down(Pid, Ref) ->
   receive
-    {'DOWN', Ref, process, Pid2, normal} ->
+    {'DOWN', Ref, process, Pid, normal} ->
       ok
   after 1000 ->
       ct:fail("Process did not died")
