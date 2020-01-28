@@ -37,7 +37,7 @@
 
 
 %% @doc Retrieve a bus_id from well-known names
-%% 
+%%
 %% @end
 -spec get_bus_id(dbus_known_bus()) -> bus_id() | {unsupported, [bus_id()]}.
 get_bus_id(session) ->
@@ -60,27 +60,27 @@ get_bus_id(system) ->
 -spec connect(bus_id() | dbus_known_bus()) -> {ok, dbus_connection()} | {error, term()}.
 connect(#bus_id{}=BusId) ->
     case dbus_peer_connection:start_link(BusId) of
-	{ok, {dbus_peer_connection, PConn}=Conn} ->
-	    case dbus_peer_connection:auth(PConn) of
-		{ok, undefined} ->
-		    case dbus_proxy:start_link(Conn, ?DBUS_SERVICE, <<"/">>, ?DBUS_NODE) of
-			{ok, DBus} ->
-			    ConnId = hello(DBus),
-			    ?debug("Hello connection id: ~p~n", [ConnId]),
-			    dbus_peer_connection:set_controlling_process(PConn, DBus),
-			    {ok, {?MODULE, DBus}};
-			{error, Err} -> {error, Err}
-		    end;
-		{ok, ConnId} ->
-		    case dbus_proxy:start_link(Conn, ?DBUS_SERVICE, <<"/">>, ?DBUS_NODE) of
-			{ok, DBus} ->
-			    ?debug("Acquired connection id: ~p~n", [ConnId]),	
-			    dbus_peer_connection:set_controlling_process(PConn, DBus),
-			    {ok, {?MODULE, DBus}};
-			{error, Err} -> {error, Err}
-		    end
-	    end;
-	{error, Err} -> {error, Err}
+      {ok, {dbus_peer_connection, PConn}=Conn} ->
+        case dbus_peer_connection:auth(PConn) of
+          {ok, undefined} ->
+            case dbus_proxy:start_link(Conn, ?DBUS_SERVICE, <<"/">>, ?DBUS_NODE) of
+              {ok, DBus} ->
+                ConnId = hello(DBus),
+                ?debug("Hello connection id: ~p~n", [ConnId]),
+                dbus_peer_connection:set_controlling_process(PConn, DBus),
+                {ok, {?MODULE, DBus}};
+              {error, Err} -> {error, Err}
+            end;
+          {ok, ConnId} ->
+            case dbus_proxy:start_link(Conn, ?DBUS_SERVICE, <<"/">>, ?DBUS_NODE) of
+              {ok, DBus} ->
+                ?debug("Acquired connection id: ~p~n", [ConnId]),
+                dbus_peer_connection:set_controlling_process(PConn, DBus),
+                {ok, {?MODULE, DBus}};
+              {error, Err} -> {error, Err}
+            end
+        end;
+      {error, Err} -> {error, Err}
     end;
 
 connect(BusName) when BusName =:= system;
@@ -112,7 +112,7 @@ cast(Bus, Msg) ->            dbus_proxy:cast(Bus, Msg).
 %%% Priv
 %%%
 env_to_bus_id() ->
-    str_to_bus_id(os:getenv(?SESSION_ENV)).
+    str_to_bus_id(dbus_os_wrapper:getenv(?SESSION_ENV)).
 
 str_to_bus_id(Addr) when is_list(Addr) ->
     list_to_bus_id(string:tokens(Addr, [?SERVER_DELIM]), []).
@@ -140,6 +140,7 @@ parse_param(Param) when is_list(Param) ->
     {Key, [?KEY_DELIM | Value]} =
 	lists:splitwith(fun(A) -> A =/= ?KEY_DELIM end, Param),
     Key_name =
+    %% TODO: JBouchard 2020-01-24 Probably not the better check
         case catch list_to_existing_atom(Key) of
             {'EXIT', {badarg, _Reason}} ->
                 Key;
