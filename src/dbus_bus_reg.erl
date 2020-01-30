@@ -102,6 +102,7 @@ handle_call({export_service, _Service, ServiceName}, _From, #state{busses=Busses
 		  ok = dbus_bus:export_service(Bus, ServiceName)
 	  end,
     ?debug("export_service name ~p~n", [ServiceName]),
+  %% TODO: JBouchard 2020-01-30 Is it possible to request a name for all those bus ?
     lists:foreach(Fun, Busses),
     {reply, ok, State};
 
@@ -120,13 +121,14 @@ handle_call(Request, _From, State) ->
 
 
 handle_cast({set_service_reg, ServiceReg}, State) ->
+  %% TODO: JBouchard 2020-01-30 Not sure what it is the purpose of this
     {noreply, State#state{service_reg=ServiceReg}};
 
 handle_cast(#dbus_message{}=Msg, #state{busses=Buses}=State) ->
     Fun = fun({_, Bus}) ->
 		  dbus_bus:cast(Bus, Msg)
 	  end,
-    lists:foreach(Fun, Buses),    
+    lists:foreach(Fun, Buses),
     {noreply, State};
 
 handle_cast(Request, State) ->
