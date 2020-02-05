@@ -83,11 +83,11 @@ connect(BusOptions, _Options) ->
 init([Path, Owner]) when is_pid(Owner), is_binary(Path) ->
     true = link(Owner),
     ?debug("Connecting to UNIX socket: ~p~n", [Path]),
-    case gen_tcp:connect({local, Path}, 0, [local, {recbuf, 65535}]) of
+  case gen_tcp:connect({local, Path}, 0, [local, {recbuf, 65535}, {active, once}]) of
 	{ok, Sock} ->
-            Loop = spawn_link(?MODULE, do_read, [Sock, self()]),
-            gen_tcp:controlling_process(Sock, Loop),
-            {ok, #state{sock=Sock, owner=Owner, loop=Loop}};
+            %% Loop = spawn_link(?MODULE, do_read, [Sock, self()]),
+            %% gen_tcp:controlling_process(Sock, Loop),
+            {ok, #state{sock=Sock, owner=Owner}};
 	{error, Err} ->
 	    ?error("Error creating socket: ~p~n", [Err]),
 	    {error, Err}
@@ -128,6 +128,11 @@ handle_cast(Request, State) ->
     ?error("Unhandled cast in ~p: ~p~n", [?MODULE, Request]),
     {noreply, State}.
 
+handle_info({tcp, Sock, Buf}, #state{owner=Owner}=State) ->
+  Owner ! {received, list_to_binary(Buf)},
+  inet:setopts(Sock, [{active, once}]),
+  {noreply, State};
+
 handle_info({unix, Data}, #state{owner=Owner}=State) ->
     %%?debug("unix received(~p)~n", [Data]),
     Owner ! {received, Data},
@@ -157,7 +162,6 @@ terminate(_Reason, #state{sock=Sock, loop=Loop}) ->
 %%% Priv
 %%%
 do_read(Sock, Pid) ->
-  process_flag(trap_exit, true),
     receive
         {tcp, Sock, Buf} ->
             Pid ! {unix, list_to_binary(Buf)},

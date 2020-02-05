@@ -123,7 +123,7 @@ handle_call(Request, _From, State) ->
     {reply, ok, State}.
 
 handle_cast(stop, State) ->
-    {stop, normal, State};
+  {stop, {error, dirty_crash}, State};
 
 handle_cast(#dbus_message{}=Msg, #state{conn=Conn}=State) ->
     dbus_connection:cast(Conn, Msg),
