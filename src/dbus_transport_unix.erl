@@ -157,6 +157,7 @@ terminate(_Reason, #state{sock=Sock, loop=Loop}) ->
 %%% Priv
 %%%
 do_read(Sock, Pid) ->
+  process_flag(trap_exit, true),
     receive
         {tcp, Sock, Buf} ->
             Pid ! {unix, list_to_binary(Buf)},
