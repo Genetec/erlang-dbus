@@ -151,10 +151,10 @@ terminate(_Reason, #state{sock=Sock, loop=Loop}) ->
     case Sock of
 	undefined -> ignore;
 	_ ->
-	    exit(Loop, kill),
+	    %% exit(Loop, kill),
 	    %% Avoid do_read loop polling on closed fd
-	    timer:sleep(100),
-            gen_tcp:close(Sock)
+	    %% timer:sleep(100),
+        gen_tcp:close(Sock)
     end,
     ok.
 
