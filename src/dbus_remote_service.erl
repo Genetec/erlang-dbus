@@ -132,7 +132,7 @@ terminate(_Reason, _State) ->
 handle_release_object(Object, Pid, #state{objects=Reg}=State) ->
     ?debug("~p: ~p handle_release_object ~p~n", [?MODULE, self(), Object]),
     case ets:match_object(Reg, {'_', Object, '_'}) of
-	[{Path, _, Pids}] ->
+	[{Path, Object, Pids}] ->
 	    case sets:is_element(Pid, Pids) of
 		true ->
 		    true = unlink(Pid),
@@ -145,6 +145,7 @@ handle_release_object(Object, Pid, #state{objects=Reg}=State) ->
 			    case ets:info(Reg, size) of
 				0 ->
 				    ?debug("No more object in service, stopping service ~p~n", [State#state.name]),
+            dbus_proxy:stop(Object),
 				    {stop, State};
 				_ ->
 				    {ok, State}
