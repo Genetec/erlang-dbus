@@ -169,7 +169,8 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{conn=Conn}=_State) ->
+  dbus_connection:close(Conn),
     terminated.
 
 
