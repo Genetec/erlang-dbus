@@ -68,7 +68,6 @@ cast(#dbus_message{}=Msg) ->
 %% gen_server callbacks
 %%
 init([]) ->
-  process_flag(trap_exit,true),
     {ok, #state{}}.
 
 
@@ -127,7 +126,7 @@ handle_cast(#dbus_message{}=Msg, #state{busses=Buses}=State) ->
     Fun = fun({_, Bus}) ->
 		  dbus_bus:cast(Bus, Msg)
 	  end,
-    lists:foreach(Fun, Buses),
+    lists:foreach(Fun, Buses),    
     {noreply, State};
 
 handle_cast(Request, State) ->
