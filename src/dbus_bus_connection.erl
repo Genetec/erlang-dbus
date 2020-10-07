@@ -37,7 +37,7 @@
 
 
 %% @doc Retrieve a bus_id from well-known names
-%% 
+%%
 %% @end
 -spec get_bus_id(dbus_known_bus()) -> bus_id() | {unsupported, [bus_id()]}.
 get_bus_id(session) ->
@@ -74,7 +74,7 @@ connect(#bus_id{}=BusId) ->
 		{ok, ConnId} ->
 		    case dbus_proxy:start_link(Conn, ?DBUS_SERVICE, <<"/">>, ?DBUS_NODE) of
 			{ok, DBus} ->
-			    ?debug("Acquired connection id: ~p~n", [ConnId]),	
+			    ?debug("Acquired connection id: ~p~n", [ConnId]),
 			    dbus_peer_connection:set_controlling_process(PConn, DBus),
 			    {ok, {?MODULE, DBus}};
 			{error, Err} -> {error, Err}
@@ -91,8 +91,8 @@ connect(BusName) when BusName =:= system;
 %% @doc Stop the bus proxy
 %% @end
 -spec close({?MODULE, dbus_connection()} | dbus_connection()) -> ok.
-close({?MODULE, Bus}) ->     dbus_proxy:stop(Bus);
-close(Bus) ->                dbus_proxy:stop(Bus).
+close({?MODULE, Bus}) ->     dbus_proxy:close(Bus);
+close(Bus) ->                dbus_proxy:close(Bus).
 
 
 %% @doc Send a message to the bus connection, synchronously.
