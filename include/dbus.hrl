@@ -7,8 +7,20 @@
 -ifndef(dbus_hrl).
 -define(dbus_hrl, true).
 
--if(?OTP_RELEASE < 21).
+-ifdef(OTP_RELEASE).
+-if(?OTP_RELEASE >= 21).
+-define(DBUS_LOGGER, logger).
+-else.
+-define(DBUS_LOGGER, error_logger).
+-endif.
+-endif.
 
+-ifndef(OTP_RELEASE).
+-define(DBUS_LOGGER, error_logger).
+-endif.
+
+
+-if(?DBUS_LOGGER =:= error_logger).
 -ifndef(debug).
 -define(debug(Msg), error_logger:info_msg(Msg)).
 -define(debug(Msg, Data), error_logger:info_msg(Msg, Data)).
