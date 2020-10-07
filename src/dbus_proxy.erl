@@ -379,7 +379,7 @@ do_introspect(Conn, Service, Path) ->
                     {error, parse_error}
             end;
         {ok, Msg} ->
-            ?error("Error introspecting object: ~p", [Msg]),
+            ?error("Error introspecting object: ~p~n", [Msg]),
             {error, invalid_introspect};
         {error, #dbus_message{body=Body}=Msg} ->
             Err = dbus_message:get_field(?FIELD_ERROR_NAME, Msg),
@@ -393,7 +393,7 @@ do_unique_name(Conn, Service) ->
         {ok, #dbus_message{body=Unique}} when is_binary(Unique) ->
             Unique;
         {ok, Msg} ->
-            ?error("Error getting name owner: ~p", [Msg]),
+            ?error("Error getting name owner: ~p~n", [Msg]),
             {error, invalid_nameowner};
         {error, #dbus_message{}=Err} ->
             case dbus_message:get_field(?FIELD_ERROR_NAME, Err) of
@@ -445,7 +445,7 @@ do_handle_signal(#signal_handler{mfa={Mod, Fun, Ctx}}=Handler, Acc, Sender, Ifac
         true ->
             try Mod:Fun(Sender, Iface, Signal, Path, Args, Ctx)
             catch Cls:Err ->
-                    ?error("Error dispatching signal to ~p:~p/6: ~p:~p", [Mod, Fun, Cls, Err])
+                    ?error("Error dispatching signal to ~p:~p/6: ~p:~p~n", [Mod, Fun, Cls, Err])
             end,
             [ Handler | Acc ];
         false -> Acc
@@ -454,7 +454,7 @@ do_handle_signal(#signal_handler{mfa={Mod, Fun, Ctx}}=Handler, Acc, Sender, Ifac
 do_handle_signal(#signal_handler{mfa={Fun, Ctx}}=Handler, Acc, Sender, Iface, Signal, Path, Args) ->
     try Fun(Sender, Iface, Signal, Path, Args, Ctx)
     catch Cls:Err ->
-            ?error("Error dispatching signal to ~p/6: ~p:~p", [Fun, Cls, Err])
+            ?error("Error dispatching signal to ~p/6: ~p:~p~n", [Fun, Cls, Err])
     end,
     [ Handler | Acc ];
 

@@ -7,6 +7,20 @@
 -ifndef(dbus_hrl).
 -define(dbus_hrl, true).
 
+-ifdef(OTP_RELEASE).
+-if(?OTP_RELEASE >= 21).
+-define(DBUS_LOGGER, logger).
+-else.
+-define(DBUS_LOGGER, error_logger).
+-endif.
+-endif.
+
+-ifndef(OTP_RELEASE).
+-define(DBUS_LOGGER, error_logger).
+-endif.
+
+
+-if(?DBUS_LOGGER =:= error_logger).
 -ifndef(debug).
 -define(debug(Msg), error_logger:info_msg(Msg)).
 -define(debug(Msg, Data), error_logger:info_msg(Msg, Data)).
@@ -25,6 +39,30 @@
 -ifndef(error).
 -define(error(Msg), error_logger:error_msg(Msg)).
 -define(error(Msg, Data), error_logger:error_msg(Msg, Data)).
+-endif.
+
+-else.
+-include_lib("kernel/include/logger.hrl").
+-ifndef(debug).
+-define(debug(Msg), ?LOG_DEBUG(lists:sublist(Msg, length(Msg)-2))).
+-define(debug(Msg, Data), ?LOG_DEBUG(lists:sublist(Msg, length(Msg)-2), Data)).
+-endif.
+
+-ifndef(info).
+-define(info(Msg), ?LOG_INFO(lists:sublist(Msg, length(Msg)-2))).
+-define(info(Msg, Data), ?LOG_INFO(lists:sublist(Msg, length(Msg)-2), Data)).
+-endif.
+
+-ifndef(warn).
+-define(warn(Msg), ?LOG_WARNING(lists:sublist(Msg, length(Msg)-2))).
+-define(warn(Msg, Data), ?LOG_WARNING(lists:sublist(Msg, length(Msg)-2), Data)).
+-endif.
+
+-ifndef(error).
+-define(error(Msg), ?LOG_ERROR(lists:sublist(Msg, length(Msg)-2))).
+-define(error(Msg, Data), ?LOG_ERROR(lists:sublist(Msg, length(Msg)-2), Data)).
+-endif.
+
 -endif.
 
 -define(DBUS_VERSION_MAJOR, 1).
@@ -63,10 +101,10 @@
 -type dbus_name() :: atom() | binary().
 -type dbus_option() :: no_reply_expected | no_auto_start.
 
--type dbus_type() :: byte | 
+-type dbus_type() :: byte |
                      boolean |
                      int16 |
-                     uint16 | 
+                     uint16 |
                      int32 |
                      uint32 |
                      int64 |
@@ -125,7 +163,7 @@
                               | 'org.freedesktop.DBus.Method.NoReply'
                               | 'org.freedesktop.DBus.Property.EmitsChangedSignal'
                               | binary().
--type dbus_annotation_value() :: true 
+-type dbus_annotation_value() :: true
                                | false
                                | invalidates
                                | binary().
