@@ -162,6 +162,6 @@ do_read(Sock, Pid) ->
             Pid ! {unix, list_to_binary(Buf)},
             do_read(Sock, Pid);
         Unhandled ->
-            ?debug("Unhandled receive: ~p", [Unhandled]),
+            ?debug("Unhandled receive: ~p~n", [Unhandled]),
             do_read(Sock, Pid)
     end.

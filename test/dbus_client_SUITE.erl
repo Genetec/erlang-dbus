@@ -23,9 +23,9 @@
 %%%
 -compile([export_all]).
 
--define(dbus_session_tcp_anonymous, 
+-define(dbus_session_tcp_anonymous,
 	{"session_tcp_anonymous.conf", "tcp:host=localhost,bind=*,port=55555,family=ipv4"}).
--define(dbus_session_unix_anonymous, 
+-define(dbus_session_unix_anonymous,
 	{"session_unix_anonymous.conf", "unix:path=/tmp/dbus-test"}).
 -define(dbus_session_unix_external,
 	{"session_unix_external.conf", "unix:path=/tmp/dbus-test"}).
@@ -89,7 +89,7 @@ init_per_group(_Name, Config) ->
     [ {service_port, ServicePid}, {connect, true} | Config0 ].
 
 
-end_per_group(Group, Config) 
+end_per_group(Group, Config)
   when Group =:= connect_tcp_anonymous;
        Group =:= connect_unix_anonymous;
        Group =:= connect_unix_external ->
@@ -145,7 +145,7 @@ interface(Config) ->
     {ok, O} = dbus_proxy:start_link(?config(bus, Config), ?SERVICE, <<"/root">>),
     ?assertMatch(true, dbus_proxy:has_interface(O, ?IFACE)),
     ?assertMatch(false, dbus_proxy:has_interface(O, <<"toto">>)),
-    ok.        
+    ok.
 
 call_method(Config) ->
     {ok, O} = dbus_proxy:start_link(?config(bus, Config), ?SERVICE, <<"/root">>),
@@ -208,11 +208,11 @@ signal(Config) ->
                ([ Signal | Signals ], [], F) ->
                    receive Signal -> F(lists:delete(Signal, Signals), [], F)
                    after 100 -> ?assert(false)
-                   end;        
+                   end;
                ([], [ BadSignal | BadSignals ], F) ->
                    receive BadSignal -> ?assert(false)
                    after 100 -> F([], BadSignals, F)
-                   end;        
+                   end;
                ([ Signal | Signals ], [ BadSignal | BadSignals ], F) ->
                    receive Signal -> F(lists:delete(Signal, Signals), [ BadSignal | BadSignals ], F);
                            BadSignal -> ?assert(false)
@@ -238,7 +238,7 @@ start_dbus(Config, {DBusConfig, DBusEnv}) ->
 
 stop_dbus(Config) ->
     stop_cmd(?config(dbus, Config)),
-    proplists:delete(dbus_env, 
+    proplists:delete(dbus_env,
 		     proplists:delete(dbus, Config)).
 
 
