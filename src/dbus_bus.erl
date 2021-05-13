@@ -79,6 +79,7 @@ init([BusId, Owner]) ->
     case dbus_bus_connection:connect(BusId) of
 	{ok, Conn} ->
 	    %% dbus_connection:auth(Conn),
+      ?debug("~p: ~p connection ~p~n", [?MODULE, self(), Conn]),
 	    Reg = ets:new(services, [set, private]),
 	    SigH = ets:new(signal_handlers, [set, private]),
 	    {ok, #state{owner=Owner, conn=Conn, services=Reg, signal_handlers=SigH}};
@@ -147,7 +148,7 @@ handle_info({setup, BusId}, State) ->
 handle_info({reply, Ref, {error, Reason}}, #state{conn_name=Ref}=State) ->
     {stop, {error, Reason}, State};
 
-handle_info({dbus_signal, Msg, Conn}, #state{conn=Conn, signal_handlers=_Handlers}=State) ->
+handle_info({dbus_signal, Msg}, #state{signal_handlers=_Handlers}=State) ->
     ?debug("Ignore signal ~p~n", [Msg]),
     {noreply, State};
 
@@ -173,7 +174,8 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{conn=Conn}=_State) ->
+  dbus_connection:close(Conn),
     terminated.
 
 
@@ -193,6 +195,8 @@ handle_release_service(Service, Pid, #state{services=Reg}=State) ->
 			0 ->
             %% TODO: JBouchard 2020-01-20 Should we update the table with an empty set ?
 						% No more pids
+          ets:delete(Reg, Name),
+          dbus_remote_service:stop(Service),
 			    {reply, ok, State};
 			_ ->
 						% Update registery entry

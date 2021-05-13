@@ -15,7 +15,8 @@
 -export([
 	 start_link/3,
 	 get_object/2,
-	 release_object/2
+	 release_object/2,
+   stop/1
 	]).
 
 %% gen_server callback2
@@ -45,6 +46,9 @@ get_object(Service, Path) ->
 
 release_object(Service, Object) ->
     gen_server:call(Service, {release_object, Object}).
+
+stop(Service) ->
+  gen_server:stop(Service).
 
 %%
 %% gen_server callbacks
@@ -132,7 +136,7 @@ terminate(_Reason, _State) ->
 handle_release_object(Object, Pid, #state{objects=Reg}=State) ->
     ?debug("~p: ~p handle_release_object ~p~n", [?MODULE, self(), Object]),
     case ets:match_object(Reg, {'_', Object, '_'}) of
-	[{Path, _, Pids}] ->
+	[{Path, Object, Pids}] ->
 	    case sets:is_element(Pid, Pids) of
 		true ->
 		    true = unlink(Pid),
@@ -140,23 +144,24 @@ handle_release_object(Object, Pid, #state{objects=Reg}=State) ->
 		    case sets:size(Pids2) of
 			0 ->
 						% No more pids, remove object
-			    ?debug("object terminated ~p ~p~n", [Object, Path]),
-			    ets:delete(Reg, Path),
+            ?info("object terminated ~p ~p~n", [Object, Path]),
+            ets:delete(Reg, Path),
+            dbus_proxy:stop(Object),
 			    case ets:info(Reg, size) of
 				0 ->
-				    ?debug("No more object in service, stopping service ~p~n", [State#state.name]),
-				    {stop, State};
+				    ?info("No more object in service, keeping service alive ~p~n", [State#state.name]),
+            {ok, State};
 				_ ->
 				    {ok, State}
 			    end;
 			_ ->
-						% Update registry entry
+					% Update registry entry
 			    ets:insert(Reg, {Path, Object, Pids2}),
 			    {ok, State}
 		    end;
 		false ->
-						% Pid was not in Pids
-		    {error, not_resgitered, State}
+					% Pid was not in Pids
+          {error, not_resgitered, State}
 	    end;
 	[] ->
 	    {error, not_registered, State}

@@ -91,8 +91,8 @@ connect(BusName) when BusName =:= system;
 %% @doc Stop the bus proxy
 %% @end
 -spec close({?MODULE, dbus_connection()} | dbus_connection()) -> ok.
-close({?MODULE, Bus}) ->     dbus_proxy:stop(Bus);
-close(Bus) ->                dbus_proxy:stop(Bus).
+close({?MODULE, Bus}) ->     dbus_proxy:close(Bus);
+close(Bus) ->                dbus_proxy:close(Bus).
 
 
 %% @doc Send a message to the bus connection, synchronously.

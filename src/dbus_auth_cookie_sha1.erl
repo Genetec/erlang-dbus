@@ -25,7 +25,7 @@ init() ->
     ?debug("Init DBUS_AUTH_COOKIE_SHA1 authentication~n", []),
     case dbus_os_wrapper:getenv("USER") of
         false ->
-            ?error("DBUS_AUTH_COOKIE_SHA1 can not be used without USER env", []),
+            ?error("DBUS_AUTH_COOKIE_SHA1 can not be used without USER env~n", []),
             {error, invalid_user};
         User ->
             HexUser = dbus_hex:encode(list_to_binary(User)),
@@ -37,7 +37,7 @@ init() ->
 %% @end
 challenge(HexChall, waiting_challenge) ->
     Chall = dbus_hex:decode(HexChall),
-    ?debug("DBUS_COOKIE_SHA1 challenge: ~p", [Chall]),
+    ?debug("DBUS_COOKIE_SHA1 challenge: ~p~n", [Chall]),
     case binary:split(Chall, [<< $\s >>], [global]) of
         [Context, CookieId, ServerChallenge] ->
             case read_cookie(Context, CookieId) of
