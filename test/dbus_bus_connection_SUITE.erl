@@ -158,9 +158,9 @@ can_cast(_Config) ->
 can_close() ->
   [{doc, "Given a dbus_connection, when close it, then stop the proxy."}].
 can_close(_Config) ->
-  meck:expect(dbus_proxy, stop, fun(_) -> ok end),
+  meck:expect(dbus_proxy, close, fun(_) -> ok end),
 
   ok = dbus_bus_connection:close({dbus_bus_connection, pid}),
   ok = dbus_bus_connection:close({other_connection, pid}),
 
-  ?assertEqual(2, meck:num_calls(dbus_proxy, stop, '_')).
+  ?assertEqual(2, meck:num_calls(dbus_proxy, close, '_')).

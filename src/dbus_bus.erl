@@ -193,8 +193,7 @@ handle_release_service(Service, Pid, #state{services=Reg}=State) ->
 		    Pids2 = sets:del_element(Pid, Pids),
 		    case sets:size(Pids2) of
 			0 ->
-            %% TODO: JBouchard 2020-01-20 Should we update the table with an empty set ?
-						% No more pids
+					% No more pids
           ets:delete(Reg, Name),
           dbus_remote_service:stop(Service),
 			    {reply, ok, State};

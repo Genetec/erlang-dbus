@@ -41,7 +41,9 @@ init_per_testcase(_, Config) ->
   meck:expect(dbus_bus_connection, connect, fun(_) -> {ok, {dbus_bus_connection, pid}} end),
   meck:expect(dbus_proxy, call, fun(_, _, _, _) -> {ok, msg} end),
   meck:expect(dbus_remote_service, start_link, fun(_, _, _) -> {ok, pid} end),
+  meck:expect(dbus_remote_service, stop, fun(_) -> ok end),
   meck:expect(dbus_connection, cast, fun(_, _) -> ok end),
+  meck:expect(dbus_connection, close, fun(_) -> ok end),
   Config.
 
 end_per_testcase(_, Config) ->
@@ -151,7 +153,8 @@ release_service(_Config) ->
 
   {ok, ServicePid} = dbus_bus:get_service(Pid, 'my_service'),
 
-  ok = dbus_bus:release_service(Pid, ServicePid).
+  ok = dbus_bus:release_service(Pid, ServicePid),
+  ?assert(meck:called(dbus_remote_service, stop, [ServicePid])).
 
 release_twice() ->
   [{doc, "Given a acquired service, when release it twice, then return ok."}].
@@ -162,7 +165,7 @@ release_twice(_Config) ->
   {ok, ServicePid} = dbus_bus:get_service(Pid, 'my_service'),
 
   ok = dbus_bus:release_service(Pid, ServicePid),
-  ok = dbus_bus:release_service(Pid, ServicePid).
+  ?assertEqual({error, not_registered}, dbus_bus:release_service(Pid, ServicePid)).
 
 release_not_registred_service() ->
   [{doc, "Given a service not acquired, when release it, then return an error."}].
