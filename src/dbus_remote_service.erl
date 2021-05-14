@@ -15,7 +15,8 @@
 -export([
 	 start_link/3,
 	 get_object/2,
-	 release_object/2
+	 release_object/2,
+   stop/1
 	]).
 
 %% gen_server callback2
@@ -45,6 +46,9 @@ get_object(Service, Path) ->
 
 release_object(Service, Object) ->
     gen_server:call(Service, {release_object, Object}).
+
+stop(Service) ->
+  gen_server:stop(Service).
 
 %%
 %% gen_server callbacks
@@ -130,38 +134,33 @@ terminate(_Reason, _State) ->
     terminated.
 
 handle_release_object(Object, Pid, #state{objects=Reg}=State) ->
-    ?debug("~p: ~p handle_release_object ~p~n", [?MODULE, self(), Object]),
-    case ets:match_object(Reg, {'_', Object, '_'}) of
-	[{Path, Object, Pids}] ->
+  ?debug("~p: ~p handle_release_object ~p~n", [?MODULE, self(), Object]),
+  case ets:match_object(Reg, {'_', Object, '_'}) of
+    [{Path, Object, Pids}] ->
 	    case sets:is_element(Pid, Pids) of
-		true ->
-		    true = unlink(Pid),
-		    Pids2 = sets:del_element(Pid, Pids),
-		    case sets:size(Pids2) of
-			0 ->
-						% No more pids, remove object
-            ?debug("object terminated ~p ~p~n", [Object, Path]),
-            ets:delete(Reg, Path),
-            dbus_proxy:stop(Object),
-			    case ets:info(Reg, size) of
-				0 ->
-				    ?debug("No more object in service, stopping service ~p~n", [State#state.name]),
-				    {stop, State};
-				_ ->
-				    {ok, State}
-			    end;
-			_ ->
-						% Update registry entry
-			    ets:insert(Reg, {Path, Object, Pids2}),
-			    {ok, State}
-		    end;
-		false ->
-						% Pid was not in Pids
-		    {error, not_resgitered, State}
+        true ->
+          true = unlink(Pid),
+          Pids2 = sets:del_element(Pid, Pids),
+          case sets:size(Pids2) of
+            0 ->
+              %% No more pids, remove object
+              ?info("object terminated ~p ~p~n", [Object, Path]),
+              ets:delete(Reg, Path),
+              dbus_proxy:stop(Object),
+              ?info("Remaining object in service ~p=~p~n", [State#state.name, ets:info(Reg, size)]),
+              {ok, State};
+            _ ->
+              %% Update registry entry
+              ets:insert(Reg, {Path, Object, Pids2}),
+              {ok, State}
+          end;
+        false ->
+          %% Pid was not in Pids
+          {error, not_resgitered, State}
 	    end;
-	[] ->
+    [] ->
 	    {error, not_registered, State}
-    end.
+  end.
 
 handle_release_all_objects(_Pid, _State) ->
     throw(unimplemented).
