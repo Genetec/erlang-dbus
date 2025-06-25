@@ -748,6 +748,7 @@ unmarshal_type_code($r) -> struct;
 unmarshal_type_code($v) -> variant;
 unmarshal_type_code($e) -> dict_entry;
 unmarshal_type_code($a) -> array;
+unmarshal_type_code($h) -> file_descriptor;
 unmarshal_type_code(_C) -> throw({bad_type_code, _C}).
 
 
