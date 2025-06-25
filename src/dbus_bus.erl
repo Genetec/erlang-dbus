@@ -46,9 +46,9 @@
 	 }).
 
 -define(DEFAULT_DBUS_SERVICE, 'org.freedesktop.DBus').
--define(DEFAULT_DBUS_NODE, 
-	#dbus_node{elements=[], 
-		   interfaces=gb_trees:from_orddict([{'org.freedesktop.DBus', ?DBUS_DBUS}, 
+-define(DEFAULT_DBUS_NODE,
+	#dbus_node{elements=[],
+		   interfaces=gb_trees:from_orddict([{'org.freedesktop.DBus', ?DBUS_DBUS},
 						     {'org.freedesktop.DBus.Introspectable', ?DBUS_INTROSPECTABLE}])}).
 
 connect(BusId) when is_record(BusId, bus_id) ->
@@ -76,15 +76,16 @@ cast(Bus, #dbus_message{}=Msg) ->
 %% gen_server callbacks
 %%
 init([BusId, Owner]) ->
-    case dbus_connection:start_link(BusId, [list, {packet, 0}]) of
+    case dbus_bus_connection:connect(BusId) of
 	{ok, Conn} ->
-	    dbus_connection:auth(Conn),
+	    %% dbus_connection:auth(Conn),
+      ?debug("~p: ~p connection ~p~n", [?MODULE, self(), Conn]),
 	    Reg = ets:new(services, [set, private]),
 	    SigH = ets:new(signal_handlers, [set, private]),
 	    {ok, #state{owner=Owner, conn=Conn, services=Reg, signal_handlers=SigH}};
 	ignore ->
 	    ignore;
-	{error, Err} -> 
+	{error, Err} ->
 	    {stop, Err}
     end.
 
@@ -144,7 +145,7 @@ handle_info({setup, BusId}, State) ->
 handle_info({reply, Ref, {error, Reason}}, #state{conn_name=Ref}=State) ->
     {stop, {error, Reason}, State};
 
-handle_info({dbus_signal, Msg, Conn}, #state{conn=Conn, signal_handlers=_Handlers}=State) ->
+handle_info({dbus_signal, Msg}, #state{signal_handlers=_Handlers}=State) ->
     ?debug("Ignore signal ~p~n", [Msg]),
     {noreply, State};
 
@@ -169,7 +170,8 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{conn=Conn}=_State) ->
+  dbus_connection:close(Conn),
     terminated.
 
 
@@ -188,6 +190,8 @@ handle_release_service(Service, Pid, #state{services=Reg}=State) ->
 		    case sets:size(Pids2) of
 			0 ->
 						% No more pids
+          ets:delete(Reg, Name),
+          dbus_remote_service:stop(Service),
 			    {reply, ok, State};
 			_ ->
 						% Update registery entry

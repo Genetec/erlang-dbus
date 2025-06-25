@@ -2,7 +2,7 @@
 %% @author Jean Parpaillon <jean.parpaillon@free.fr>
 %% @copyright Copyright 2014 Jean Parpaillon
 %% @doc Implements a remote service ...
-%% 
+%%
 %% @todo Remember what this module does ;)
 %% @end
 -module(dbus_remote_service).
@@ -15,7 +15,8 @@
 -export([
 	 start_link/3,
 	 get_object/2,
-	 release_object/2
+	 release_object/2,
+   stop/1
 	]).
 
 %% gen_server callback2
@@ -39,12 +40,15 @@ start_link(Bus, Conn, ServiceName) ->
     gen_server:start_link(?MODULE, [Bus, Conn, ServiceName], []).
 
 
--spec get_object(dbus_name(), binary()) -> {ok, pid()} | {error, term()}.					    
+-spec get_object(dbus_name(), binary()) -> {ok, pid()} | {error, term()}.
 get_object(Service, Path) ->
     gen_server:call(Service, {get_object, Path}).
 
 release_object(Service, Object) ->
     gen_server:call(Service, {release_object, Object}).
+
+stop(Service) ->
+  gen_server:stop(Service).
 
 %%
 %% gen_server callbacks
@@ -56,14 +60,14 @@ init([Bus, Conn, ServiceName]) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-handle_call({get_object, Path}, {Pid, _Tag}, 
+handle_call({get_object, Path}, {Pid, _Tag},
 	    #state{objects=Reg, bus=Bus, conn=Conn, name=Name}=State) ->
     case ets:lookup(Reg, Path) of
 	[{Path, Object, Pids}] ->
 	    ets:insert(Reg, {Path, Object, sets:add_element(Pid, Pids)}),
 	    {reply, {ok, Object}, State};
 	[] ->
-	    case dbus_proxy:start_link(Bus, Conn, Name, Path) of
+	    case dbus_proxy:start_link(Conn, Name, Path) of
 		{ok, Object} ->
 		    ets:insert(Reg, {Path, Object, sets:from_list([Pid])}),
 		    {reply, {ok, Object}, State};
@@ -130,37 +134,33 @@ terminate(_Reason, _State) ->
     terminated.
 
 handle_release_object(Object, Pid, #state{objects=Reg}=State) ->
-    ?debug("~p: ~p handle_release_object ~p~n", [?MODULE, self(), Object]),
-    case ets:match_object(Reg, {'_', Object, '_'}) of
-	[{Path, _, Pids}] ->
+  ?debug("~p: ~p handle_release_object ~p~n", [?MODULE, self(), Object]),
+  case ets:match_object(Reg, {'_', Object, '_'}) of
+    [{Path, Object, Pids}] ->
 	    case sets:is_element(Pid, Pids) of
-		true ->
-		    true = unlink(Pid),
-		    Pids2 = sets:del_element(Pid, Pids),
-		    case sets:size(Pids2) of
-			0 ->
-						% No more pids, remove object
-			    ?debug("object terminated ~p ~p~n", [Object, Path]),
-			    ets:delete(Reg, Path),
-			    case ets:info(Reg, size) of
-				0 ->
-				    ?debug("No more object in service, stopping service ~p~n", [State#state.name]),
-				    {stop, State};
-				_ ->
-				    {ok, State}
-			    end;
-			_ ->
-						% Update registry entry
-			    ets:insert(Reg, {Path, Object, Pids2}),
-			    {ok, State}
-		    end;
-		false ->
-						% Pid was not in Pids
-		    {error, not_resgitered, State}
+        true ->
+          true = unlink(Pid),
+          Pids2 = sets:del_element(Pid, Pids),
+          case sets:size(Pids2) of
+            0 ->
+              %% No more pids, remove object
+              ?info("object terminated ~p ~p~n", [Object, Path]),
+              ets:delete(Reg, Path),
+              dbus_proxy:stop(Object),
+              ?info("Remaining object in service ~p=~p~n", [State#state.name, ets:info(Reg, size)]),
+              {ok, State};
+            _ ->
+              %% Update registry entry
+              ets:insert(Reg, {Path, Object, Pids2}),
+              {ok, State}
+          end;
+        false ->
+          %% Pid was not in Pids
+          {error, not_resgitered, State}
 	    end;
-	[] ->
+    [] ->
 	    {error, not_registered, State}
-    end.
+  end.
 
 handle_release_all_objects(_Pid, _State) ->
     throw(unimplemented).

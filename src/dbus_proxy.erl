@@ -18,6 +18,7 @@
          start_link/3,
          start_link/4,
          stop/1,
+         close/1,
          call/2,
          call/3,
          call/4,
@@ -95,11 +96,17 @@ start_link(Conn, Service, Path, #dbus_node{}=Node) when is_binary(Path) ->
     gen_server:start_link(?MODULE, [Conn, Service, Path, Node], []).
 
 
-%% @doc Disconnect proxy
+%% @doc Stop proxy, but leave the connection open.
 %% @end
 -spec stop(dbus_proxy()) -> ok.
 stop(Proxy) ->
     gen_server:cast(Proxy, stop).
+
+%% @doc Disconnect proxy and close the connection. This one should be call via the dbus_connection module.
+%% @end
+-spec close(dbus_proxy()) -> ok.
+close(Proxy) ->
+  gen_server:cast(Proxy, close).
 
 
 %% @equiv call(Proxy, Msg, 5000)
@@ -294,6 +301,10 @@ handle_call(Request, _From, State) ->
 handle_cast(stop, State) ->
     {stop, normal, State};
 
+handle_cast(close, #state{conn=Conn}=State) ->
+  dbus_connection:close(Conn),
+  {stop, normal, State};
+
 handle_cast(Request, State) ->
     ?error("Unhandled cast in ~p: ~p~n", [?MODULE, Request]),
     {noreply, State}.
@@ -328,8 +339,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{conn=Conn}=_State) ->
-    dbus_connection:close(Conn),
+terminate(Reason, #state{conn=Conn}=_State) ->
     terminated.
 
 reply(From, Reply, Options) ->
@@ -369,7 +379,7 @@ do_introspect(Conn, Service, Path) ->
                     {error, parse_error}
             end;
         {ok, Msg} ->
-            ?error("Error introspecting object: ~p", [Msg]),
+            ?error("Error introspecting object: ~p~n", [Msg]),
             {error, invalid_introspect};
         {error, #dbus_message{body=Body}=Msg} ->
             Err = dbus_message:get_field(?FIELD_ERROR_NAME, Msg),
@@ -383,7 +393,7 @@ do_unique_name(Conn, Service) ->
         {ok, #dbus_message{body=Unique}} when is_binary(Unique) ->
             Unique;
         {ok, Msg} ->
-            ?error("Error getting name owner: ~p", [Msg]),
+            ?error("Error getting name owner: ~p~n", [Msg]),
             {error, invalid_nameowner};
         {error, #dbus_message{}=Err} ->
             case dbus_message:get_field(?FIELD_ERROR_NAME, Err) of
@@ -435,7 +445,7 @@ do_handle_signal(#signal_handler{mfa={Mod, Fun, Ctx}}=Handler, Acc, Sender, Ifac
         true ->
             try Mod:Fun(Sender, Iface, Signal, Path, Args, Ctx)
             catch Cls:Err ->
-                    ?error("Error dispatching signal to ~p:~p/6: ~p:~p", [Mod, Fun, Cls, Err])
+                    ?error("Error dispatching signal to ~p:~p/6: ~p:~p~n", [Mod, Fun, Cls, Err])
             end,
             [ Handler | Acc ];
         false -> Acc
@@ -444,7 +454,7 @@ do_handle_signal(#signal_handler{mfa={Mod, Fun, Ctx}}=Handler, Acc, Sender, Ifac
 do_handle_signal(#signal_handler{mfa={Fun, Ctx}}=Handler, Acc, Sender, Iface, Signal, Path, Args) ->
     try Fun(Sender, Iface, Signal, Path, Args, Ctx)
     catch Cls:Err ->
-            ?error("Error dispatching signal to ~p/6: ~p:~p", [Fun, Cls, Err])
+            ?error("Error dispatching signal to ~p/6: ~p:~p~n", [Fun, Cls, Err])
     end,
     [ Handler | Acc ];
 
